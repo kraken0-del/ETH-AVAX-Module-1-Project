@@ -1,56 +1,62 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-contract arithmeticOperations {
+contract AttendanceTracker {
 
-    uint public result;
-
-    function add(uint a, uint b) external {
-        require(a > 0 && b > 0, "Inputs must be greater than zero");
-        
-        result = a + b;
-
-        // Ensures that the result is not smaller than either of the inputs
-        assert(result >= a && result >= b);
+    struct Participant {
+        string name;
+        bool isCheckedIn;
     }
 
-    
-    function subtract(uint a, uint b) external {
-        require(a >= b, "First number must be greater than or equal to the second");
-        result = a - b;
+    mapping(uint => Participant) public participants;
+    uint[] private participantIds;
+    uint public totalCheckedIn;
 
-        // Ensures that subtraction was performed correctly
-        assert(result <= a);
+    function addParticipant(uint id, string memory name) external {
+        require(bytes(participants[id].name).length == 0, "Participant already exists");
+        participants[id] = Participant(name, false);
+        participantIds.push(id);
     }
 
-
-    function multiply(uint a, uint b) external {
-        if (a == 0 || b == 0) {
-            revert("Multiplication by zero is not allowed");
+    function checkIn(uint id) external {
+        if (bytes(participants[id].name).length == 0) {
+            revert("Participant does not exist");
         }
-
-        uint newResult = a * b;
-
-        // Assert that the result divided by 'a' gives 'b', preventing overflow
-        assert(newResult / a == b);
-
-        result = newResult;
+        require(!participants[id].isCheckedIn, "Participant already checked in");
+        participants[id].isCheckedIn = true;
+        totalCheckedIn++;
+        assert(participants[id].isCheckedIn == true);
     }
 
-    
-    function divide(uint a, uint b) external {
-       
-        if (b == 0) revert("Cannot divide by zero");
-        
-        result = a / b;
-
-        // Ensures that the result multiplied by 'b' is equal to 'a'
-        assert(result * b + (a % b) == a);
+    function removeParticipant(uint id) external {
+        if (bytes(participants[id].name).length == 0) {
+            revert("Participant does not exist");
+        }
+        if (participants[id].isCheckedIn) {
+            totalCheckedIn--;
+        }
+        delete participants[id];
+        for (uint i = 0; i < participantIds.length; i++) {
+            if (participantIds[i] == id) {
+                participantIds[i] = participantIds[participantIds.length - 1];
+                participantIds.pop();
+                break;
+            }
+        }
+        assert(bytes(participants[id].name).length == 0);
     }
 
-    function reset() external {
-        
-        result = 0;
-        assert(result == 0);  // Ensures that the result is actually reset to 0
+    function resetAttendance() external {
+        for (uint i = 0; i < participantIds.length; i++) {
+            uint id = participantIds[i];
+            if (participants[id].isCheckedIn) {
+                participants[id].isCheckedIn = false;
+            }
+        }
+        totalCheckedIn = 0;
+        assert(totalCheckedIn == 0);
+    }
+     function getAllParticipantIds() external view returns (uint[] memory) {
+        return participantIds;
     }
 }
